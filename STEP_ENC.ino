@@ -1,60 +1,79 @@
 /*
-    Name:       STEP_ENC.ino
-    Created:	24.05.2020 08:52:07
-    Author:     PAWEL-ASUS\pawel
+	Name:       STEP_ENC.ino
+	Created:	24.05.2020 08:52:07
+	Author:     PAWELK
 */
 
-#define PIN_ENCA 10
-#define PIN_ENCB 11
-
-volatile uint8_t lastA, lastB;
 #include <Encoder.h>
 
-// Change these two numbers to the pins connected to your encoder.
-//   Best Performance: both pins have interrupt capability
-//   Good Performance: only the first pin has interrupt capability
-//   Low Performance:  neither pin has interrupt capability
+//
+
+// Rotary encoders pins
+#define PIN_ENCA 2	// pin A/CLK
+#define PIN_ENCB 3	// pin B
+
+#ifdef USE_ENCODER
 Encoder myEnc(PIN_ENCA, PIN_ENCB);
-
-
-void setup()
-{
-	pinMode(PIN_ENCA, INPUT_PULLUP);
-	pinMode(PIN_ENCB, INPUT_PULLUP);
-	lastA = digitalRead(PIN_ENCA);
-	lastB = digitalRead(PIN_ENCB);
-	Serial.begin(57600);
-	delay(1000);
-	Serial.print("A-B: ");
-}
-
-int read_encoder() {
-	uint8_t currA = digitalRead(PIN_ENCA);
-	if (currA == lastA) return 0;
-	lastA = currA;
-	if (currA != digitalRead(PIN_ENCB)) return 1;
-	else return -1;
-}
-
 long oldPosition = -999;
-
-void loop2() {
+void loop() {
 	long newPosition = myEnc.read();
 	if (newPosition != oldPosition) {
 		oldPosition = newPosition;
 		Serial.println(newPosition);
 	}
 }
+#endif // USE_ENCODER
 
-long count = 0;
+
+
+
+volatile uint8_t lastA;				// Last digit state
+volatile uint8_t mask = B00110011;	// Shifting mask
+
+
+void setup()
+{
+	// PD4-PD7 as output; stepper motors driving lines
+	DDRD = B11110000;
+	PORTD = PORTD & B11000000;
+
+	// PD3-PD4 as input for rotary encoders pins
+	pinMode(PIN_ENCA, INPUT_PULLUP);
+	pinMode(PIN_ENCB, INPUT_PULLUP);
+
+	// default state on startup
+	PORTD = (PORTD & B00001111) | (mask & B11110000);
+	Serial.begin(115200);
+}
 
 void loop()
 {
-	int x = read_encoder();
+	int x = encoder_read();
 	if (x == 0) return;
-	count++;
-	Serial.print(count);
-	Serial.print(": ");
-	Serial.print(x);
-	Serial.println();
+	rotare(x);
 }
+
+// Detection of encoder rotation changes
+// 1 - right
+// 0 - none
+// -1- left
+int encoder_read() {
+	uint8_t currA = digitalRead(PIN_ENCA);
+	if (currA == lastA) return 0;
+	lastA = currA;
+	if 	(currA != digitalRead(PIN_ENCB)) 
+		return 1;
+	else 
+		return -1;
+}
+
+// Makes one step turn
+void rotare(int8_t step) {
+	if (step > 0) 
+		mask = (mask << 1) | (mask >> (8 - 1));
+	else 
+		mask = (mask >> 1) | (mask << (8 - 1));
+	PORTD = (PORTD & B00001111) | (mask & B11110000);
+}
+
+
