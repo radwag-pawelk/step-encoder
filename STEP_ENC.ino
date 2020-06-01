@@ -4,15 +4,12 @@
 	Author:     PAWELK
 */
 
-#include <Encoder.h>
-
-//
-
 // Rotary encoders pins
 #define PIN_ENCA 2	// pin A/CLK
 #define PIN_ENCB 3	// pin B
 
 #ifdef USE_ENCODER
+#include <Encoder.h>
 Encoder myEnc(PIN_ENCA, PIN_ENCB);
 long oldPosition = -999;
 void loop() {
@@ -46,13 +43,6 @@ void setup()
 	Serial.begin(115200);
 }
 
-void loop()
-{
-	int x = encoder_read();
-	if (x == 0) return;
-	rotare(x);
-}
-
 // Detection of encoder rotation changes
 // 1 - right
 // 0 - none
@@ -76,4 +66,9 @@ void rotare(int8_t step) {
 	PORTD = (PORTD & B00001111) | (mask & B11110000);
 }
 
-
+void loop()
+{
+	int x = encoder_read();
+	if (x == 0) return;
+	rotare(x);
+}
